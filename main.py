@@ -2,13 +2,12 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 import pandas as pd
 
-TAXA_CORRETAGEM = 0.40
 global_output_df = None  # Variável global para armazenar o resultado
 
-def calcular_corretagem_por_conta(df, taxa=TAXA_CORRETAGEM):
+def calcular_corretagem_por_conta(df, taxa):
     """
     Agrupa as ordens por conta e calcula a corretagem,
-    multiplicando o número de ordens pela taxa definida.
+    multiplicando o número de ordens pela taxa informada.
     """
     ordens_por_conta = df.groupby('Conta').size()
     corretagem = ordens_por_conta * taxa
@@ -29,13 +28,22 @@ def selecionar_arquivo():
 def processar():
     """
     Lê o arquivo CSV, filtra pelas contas (se informado), 
-    calcula a corretagem e exibe o resultado na área de texto.
+    lê a taxa de corretagem informada pelo usuário, calcula a corretagem 
+    e exibe o resultado na área de texto.
     """
     caminho_arquivo = arquivo_entry.get()
     if not caminho_arquivo:
         messagebox.showerror("Erro", "Selecione um arquivo CSV.")
         return
-    
+
+    # Recupera a taxa de corretagem informada
+    taxa_str = taxa_entry.get().strip()
+    try:
+        taxa = float(taxa_str)
+    except ValueError:
+        messagebox.showerror("Erro", "Taxa de corretagem inválida. Insira um valor numérico.")
+        return
+
     try:
         df = pd.read_csv(caminho_arquivo, encoding='latin1')
     except Exception as e:
@@ -46,10 +54,10 @@ def processar():
         messagebox.showerror("Erro", "A coluna 'Conta' não foi encontrada no arquivo.")
         return
 
-    # Converte a coluna 'Conta' para string
+    # Converte a coluna 'Conta' para string para evitar discrepâncias com a entrada do usuário
     df['Conta'] = df['Conta'].astype(str)
     
-    # Filtra as contas se o usuário informar
+    # Filtra as contas, se informado
     contas_input = contas_entry.get().strip()
     if contas_input:
         contas = [conta.strip() for conta in contas_input.split(',')]
@@ -58,9 +66,9 @@ def processar():
     if df.empty:
         messagebox.showinfo("Informação", "Nenhuma ordem encontrada para as contas informadas.")
         return
-    
-    # Calcula a corretagem
-    corretagem_por_conta = calcular_corretagem_por_conta(df)
+
+    # Calcula a corretagem usando a taxa informada
+    corretagem_por_conta = calcular_corretagem_por_conta(df, taxa)
     
     # Cria um DataFrame para o output
     output_df = pd.DataFrame(corretagem_por_conta).reset_index()
@@ -122,6 +130,17 @@ contas_label.pack(side=tk.LEFT)
 
 contas_entry = tk.Entry(frame_contas, width=30)
 contas_entry.pack(side=tk.LEFT, padx=5)
+
+# Frame para informar a taxa de corretagem
+frame_taxa = tk.Frame(root)
+frame_taxa.pack(padx=10, pady=10, fill='x')
+
+taxa_label = tk.Label(frame_taxa, text="Taxa de Corretagem (R$):")
+taxa_label.pack(side=tk.LEFT)
+
+taxa_entry = tk.Entry(frame_taxa, width=10)
+taxa_entry.insert(0, "0.40")  # valor padrão
+taxa_entry.pack(side=tk.LEFT, padx=5)
 
 # Botão para processar
 processar_btn = tk.Button(root, text="Processar", command=processar)
